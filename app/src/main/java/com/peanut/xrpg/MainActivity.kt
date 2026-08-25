@@ -11,7 +11,6 @@ import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import java.util.Locale
 
 private data class Player(
     var name: String,
@@ -35,9 +34,11 @@ class MainActivity : AppCompatActivity() {
     private val players = mutableListOf(Player("Player 1"), Player("Player 2"))
     private var activePlayer = 0
     private var dice2d = false
+    private var dice3d = false
     private lateinit var playerStrip: LinearLayout
     private lateinit var resultText: TextView
     private lateinit var modeText: TextView
+    private lateinit var dice3dView: Dice3DView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,8 +59,7 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp(20), dp(16), dp(20), dp(10))
         }
         header.addView(label("XRpg", 28f, text, true), LinearLayout.LayoutParams(0, -2, 1f))
-        val round = button("NOVA RODADA", accent, bg) { newRound() }
-        header.addView(round, LinearLayout.LayoutParams(-2, dp(42)))
+        header.addView(button("NOVA RODADA", accent, bg) { newRound() }, LinearLayout.LayoutParams(-2, dp(42)))
         root.addView(header)
 
         val scroll = ScrollView(this).apply { isFillViewport = true }
@@ -90,14 +90,15 @@ class MainActivity : AppCompatActivity() {
         listOf(4, 6, 8, 10, 12, 20, 100).forEach { sides ->
             val b = button("D$sides", text, panel2) { rollDie(sides, it) }
             diceGrid.addView(b, GridLayout.LayoutParams().apply {
-                width = 0; height = dp(52); columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                width = 0; height = dp(52)
+                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
                 setMargins(dp(4), dp(4), dp(4), dp(4))
             })
         }
         diceCard.addView(diceGrid, marginParams(0, 6, 0, 0))
         content.addView(diceCard, marginParams(0, 0, 0, 12))
 
-        val options = card()
+        val modes = card()
         val twoD = Switch(this).apply {
             text = "Modo Dados 2D"
             textSize = 15f
@@ -105,13 +106,49 @@ class MainActivity : AppCompatActivity() {
             isChecked = false
             setOnCheckedChangeListener { _, checked ->
                 dice2d = checked
-                modeText.text = if (checked) "Dados 2D • dois dados por toque • soma automática" else "Dados clássicos • 1 dado por toque"
+                if (checked) dice3d = false
+                modeText.text = when {
+                    dice3d -> "Dados 3D • renderização nativa • toque em qualquer dado"
+                    checked -> "Dados 2D • dois dados por toque • soma automática"
+                    else -> "Dados clássicos • 1 dado por toque"
+                }
+                dice3dView.visibility = if (dice3d) View.VISIBLE else View.GONE
             }
         }
-        options.addView(twoD)
+        modes.addView(twoD)
+
+        val threeD = Switch(this).apply {
+            text = "Modo Dados 3D"
+            textSize = 15f
+            setTextColor(text)
+            isChecked = false
+            setOnCheckedChangeListener { _, checked ->
+                dice3d = checked
+                if (checked) twoD.isChecked = false
+                modeText.text = when {
+                    checked -> "Dados 3D • renderização nativa • toque em qualquer dado"
+                    dice2d -> "Dados 2D • dois dados por toque • soma automática"
+                    else -> "Dados clássicos • 1 dado por toque"
+                }
+                dice3dView.visibility = if (checked) View.VISIBLE else View.GONE
+            }
+        }
+        modes.addView(threeD, marginParams(0, 2, 0, 0))
+
+        val threeDCard = card()
+        threeDCard.addView(label("VISUAL 3D", 11f, accent, true))
+        dice3dView = Dice3DView(this).apply {
+            visibility = View.GONE
+            setBackgroundColor(panel)
+        }
+        threeDCard.addView(dice3dView, LinearLayout.LayoutParams(-1, dp(230)).apply {
+            topMargin = dp(6)
+        })
+        modes.addView(threeDCard, marginParams(0, 8, 0, 0))
+
         val anti = button("CONFIGURAR ANTI-ZIKAMENTO", text, panel2) { showPlayerSettings() }
-        options.addView(anti, marginParams(0, 8, 0, 0))
-        content.addView(options, marginParams(0, 0, 0, 12))
+        modes.addView(anti, marginParams(0, 8, 0, 0))
+        content.addView(modes, marginParams(0, 0, 0, 12))
 
         val resultCard = card()
         resultCard.addView(label("ÚLTIMO RESULTADO", 11f, accent, true))
@@ -119,8 +156,7 @@ class MainActivity : AppCompatActivity() {
         resultCard.addView(resultText, marginParams(0, 14, 0, 4))
         content.addView(resultCard, marginParams(0, 0, 0, 12))
 
-        val playersTitle = label("JOGADORES", 11f, accent, true)
-        content.addView(playersTitle, marginParams(0, 4, 0, 8))
+        content.addView(label("JOGADORES", 11f, accent, true), marginParams(0, 4, 0, 8))
         val playersList = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             tag = "playersList"
@@ -141,8 +177,7 @@ class MainActivity : AppCompatActivity() {
             }
             playerStrip.addView(b, LinearLayout.LayoutParams(0, dp(44), 1f).apply { setMargins(dp(3), 0, dp(3), 0) })
         }
-        val add = button("+", text, panel2) { addPlayer() }
-        playerStrip.addView(add, LinearLayout.LayoutParams(dp(48), dp(44)).apply { setMargins(dp(3), 0, 0, 0) })
+        playerStrip.addView(button("+", text, panel2) { addPlayer() }, LinearLayout.LayoutParams(dp(48), dp(44)).apply { setMargins(dp(3), 0, 0, 0) })
     }
 
     private fun addPlayer() {
@@ -151,20 +186,21 @@ class MainActivity : AppCompatActivity() {
         rebuildPlayerSection()
     }
 
-    private fun rebuildPlayerSection() {
-        buildUi()
-    }
+    private fun rebuildPlayerSection() = buildUi()
 
     private fun rollDie(sides: Int, view: View) {
         val p = players[activePlayer]
         val first = DiceEngine.roll(sides, p.luck, p.curse, p.antiJinx, p.percentageMode, p.luckPercent, p.cursePercent)
-        val output = if (dice2d) {
-            val second = DiceEngine.roll(sides, p.luck, p.curse, p.antiJinx, p.percentageMode, p.luckPercent, p.cursePercent)
-            "D$sides  •  $first + $second = ${first + second}"
-        } else "D$sides  •  $first"
+        val second = if (dice2d && !dice3d) DiceEngine.roll(sides, p.luck, p.curse, p.antiJinx, p.percentageMode, p.luckPercent, p.cursePercent) else 0
+        val output = when {
+            dice3d -> "D$sides  •  $first  •  visual 3D"
+            dice2d -> "D$sides  •  $first + $second = ${first + second}"
+            else -> "D$sides  •  $first"
+        }
         p.lastResult = output
         resultText.text = "${p.name}\n$output"
         animateRoll(view)
+        if (dice3d) dice3dView.setResult("D$sides", first)
         refreshCards()
     }
 
@@ -189,8 +225,8 @@ class MainActivity : AppCompatActivity() {
         box.addView(anti)
         val percent = Switch(this).apply { text = "Modo de porcentagem"; isChecked = p.percentageMode; setTextColor(text) }
         box.addView(percent)
-        val luck = numberField("Sorte em pontos", if (p.percentageMode) p.luckPercent else p.luck)
-        val curse = numberField("Azar em pontos", if (p.percentageMode) p.cursePercent else p.curse)
+        val luck = numberField(if (p.percentageMode) "Sorte (%)" else "Sorte em pontos", if (p.percentageMode) p.luckPercent else p.luck)
+        val curse = numberField(if (p.percentageMode) "Azar (%)" else "Azar em pontos", if (p.percentageMode) p.cursePercent else p.curse)
         box.addView(luck); box.addView(curse)
         percent.setOnCheckedChangeListener { _, checked ->
             luck.hint = if (checked) "Sorte (%)" else "Sorte (pontos)"
@@ -212,7 +248,7 @@ class MainActivity : AppCompatActivity() {
             }.show()
     }
 
-    private fun numberField(hintText: String, value: Int): EditText = EditText(this).apply {
+    private fun numberField(hintText: String, value: Int) = EditText(this).apply {
         hint = hintText; setHintTextColor(muted); setTextColor(text); setText(value.toString()); inputType = 2
     }
 
@@ -249,14 +285,15 @@ class MainActivity : AppCompatActivity() {
         return null
     }
 
-    private fun card(): LinearLayout = LinearLayout(this).apply {
+    private fun card() = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setPadding(dp(16), dp(14), dp(16), dp(14))
         setBackgroundColor(panel)
     }
 
     private fun label(value: String, size: Float, color: Int, bold: Boolean) = TextView(this).apply {
-        text = value; textSize = size; setTextColor(color); if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
+        text = value; textSize = size; setTextColor(color)
+        if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
     }
 
     private fun button(value: String, fg: Int, bgColor: Int, action: (View) -> Unit) = Button(this).apply {
