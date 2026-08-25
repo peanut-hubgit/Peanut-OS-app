@@ -102,7 +102,7 @@ class MainActivity : AppCompatActivity() {
         val twoD = Switch(this).apply {
             text = "Modo Dados 2D"
             textSize = 15f
-            setTextColor(text)
+            setTextColor(this@MainActivity.text)
             isChecked = false
             setOnCheckedChangeListener { _, checked ->
                 dice2d = checked
@@ -120,7 +120,7 @@ class MainActivity : AppCompatActivity() {
         val threeD = Switch(this).apply {
             text = "Modo Dados 3D"
             textSize = 15f
-            setTextColor(text)
+            setTextColor(this@MainActivity.text)
             isChecked = false
             setOnCheckedChangeListener { _, checked ->
                 dice3d = checked
@@ -219,11 +219,11 @@ class MainActivity : AppCompatActivity() {
     private fun showPlayerSettings() {
         val p = players[activePlayer]
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), 0, dp(20), 0) }
-        val name = EditText(this).apply { setText(p.name); setTextColor(text); hint = "Nome do jogador"; setHintTextColor(muted) }
+        val name = EditText(this).apply { setText(p.name); setTextColor(this@MainActivity.text); hint = "Nome do jogador"; setHintTextColor(muted) }
         box.addView(name)
-        val anti = Switch(this).apply { text = "Anti-zikamento nesta rodada"; isChecked = p.antiJinx; setTextColor(text) }
+        val anti = Switch(this).apply { text = "Anti-zikamento nesta rodada"; isChecked = p.antiJinx; setTextColor(this@MainActivity.text) }
         box.addView(anti)
-        val percent = Switch(this).apply { text = "Modo de porcentagem"; isChecked = p.percentageMode; setTextColor(text) }
+        val percent = Switch(this).apply { text = "Modo de porcentagem"; isChecked = p.percentageMode; setTextColor(this@MainActivity.text) }
         box.addView(percent)
         val luck = numberField(if (p.percentageMode) "Sorte (%)" else "Sorte em pontos", if (p.percentageMode) p.luckPercent else p.luck)
         val curse = numberField(if (p.percentageMode) "Azar (%)" else "Azar em pontos", if (p.percentageMode) p.cursePercent else p.curse)
@@ -249,7 +249,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun numberField(hintText: String, value: Int) = EditText(this).apply {
-        hint = hintText; setHintTextColor(muted); setTextColor(text); setText(value.toString()); inputType = 2
+        hint = hintText; setHintTextColor(muted); setTextColor(this@MainActivity.text); setText(value.toString()); inputType = 2
     }
 
     private fun refreshCards() {
