@@ -57,7 +57,6 @@ public final class Dice3DView extends GLSurfaceView {
         @Override public void onSurfaceCreated(GL10 gl, EGLConfig config) {
             GLES20.glClearColor(0.059f, 0.067f, 0.090f, 1f);
             GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-            GLES20.glEnable(GLES20.GL_CULL_FACE);
         }
 
         @Override public void onSurfaceChanged(GL10 gl, int width, int height) {
@@ -141,36 +140,12 @@ public final class Dice3DView extends GLSurfaceView {
             vertices.put(data).position(0);
         }
 
-        private float[] tetra() {
-            float[][] v={{1,1,1},{1,-1,-1},{-1,1,-1},{-1,-1,1}};
-            int[][] f={{0,1,2},{0,3,1},{0,2,3},{1,3,2}}; return faces(v,f);
-        }
-        private float[] cube() {
-            float a=1f; float[][] v={{-a,-a,-a},{a,-a,-a},{a,a,-a},{-a,a,-a},{-a,-a,a},{a,-a,a},{a,a,a},{-a,a,a}};
-            int[][] f={{0,1,2},{0,2,3},{4,6,5},{4,7,6},{0,4,5},{0,5,1},{3,2,6},{3,6,7},{1,5,6},{1,6,2},{0,3,7},{0,7,4}}; return faces(v,f);
-        }
-        private float[] octa() {
-            float[][] v={{1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}};
-            int[][] f={{0,2,4},{2,1,4},{1,3,4},{3,0,4},{2,0,5},{1,2,5},{3,1,5},{0,3,5}}; return faces(v,f);
-        }
-        private float[] icosa() {
-            float t=(float)((1+Math.sqrt(5))/2); float[][] v={{-1,t,0},{1,t,0},{-1,-t,0},{1,-t,0},{0,-1,t},{0,1,t},{0,-1,-t},{0,1,-t},{t,0,-1},{t,0,1},{-t,0,-1},{-t,0,1}};
-            int[][] f={{0,11,5},{0,5,1},{0,1,7},{0,7,10},{0,10,11},{1,5,9},{5,11,4},{11,10,2},{10,7,6},{7,1,8},{3,9,4},{3,4,2},{3,2,6},{3,6,8},{3,8,9},{4,9,5},{2,4,11},{6,2,10},{8,6,7},{9,8,1}}; return faces(v,f);
-        }
-        private float[] dodeca() {
-            float[][] v={{-1,-1,-1},{-1,-1,1},{-1,1,-1},{-1,1,1},{1,-1,-1},{1,-1,1},{1,1,-1},{1,1,1},{0,-0.618034f,-1.618034f},{-0.618034f,-1.618034f,0},{-1.618034f,0,-0.618034f},{0,-0.618034f,1.618034f},{-0.618034f,1.618034f,0},{1.618034f,0,-0.618034f},{0,0.618034f,-1.618034f},{0.618034f,-1.618034f,0},{-1.618034f,0,0.618034f},{0,0.618034f,1.618034f},{0.618034f,1.618034f,0},{1.618034f,0,0.618034f}};
-            int[][] f={{6,14,8},{6,4,8},{6,4,13},{2,0,10},{2,0,8},{2,14,8},{16,1,9},{16,0,10},{16,0,9},{16,3,12},{16,2,10},{16,2,12},{15,5,11},{15,1,9},{15,1,11},{15,0,8},{15,0,9},{15,4,8},{19,15,5},{19,4,13},{19,15,4},{17,1,11},{17,16,1},{17,16,3},{17,5,11},{17,19,7},{17,19,5},{18,2,14},{18,6,14},{18,2,12},{18,6,13},{18,19,13},{18,19,7},{18,3,12},{18,17,7},{18,17,3}};
-            return faces(v,f);
-        }
-        private float[] icoSphere() {
-            ArrayList<Float> o=new ArrayList<>(); int rings=7, segments=14;
-            for(int r=0;r<rings-1;r++){ double lat=-Math.PI/2 + Math.PI*r/(rings-1), next=-Math.PI/2 + Math.PI*(r+1)/(rings-1);
-                for(int s=0;s<segments;s++){ double a=2*Math.PI*s/segments,b=2*Math.PI*(s+1)/segments;
-                    float x1=(float)(Math.cos(lat)*Math.cos(a)),z1=(float)(Math.cos(lat)*Math.sin(a)),y1=(float)Math.sin(lat); float x2=(float)(Math.cos(next)*Math.cos(a)),z2=(float)(Math.cos(next)*Math.sin(a)),y2=(float)Math.sin(next); float x3=(float)(Math.cos(next)*Math.cos(b)),z3=(float)(Math.cos(next)*Math.sin(b)),y3=(float)Math.sin(next); float x4=(float)(Math.cos(lat)*Math.cos(b)),z4=(float)(Math.cos(lat)*Math.sin(b)),y4=(float)Math.sin(lat);
-                    tri(o,x1,y1,z1,x2,y2,z2,x3,y3,z3); tri(o,x1,y1,z1,x3,y3,z3,x4,y4,z4); }
-            }
-            float[] a=new float[o.size()]; for(int i=0;i<a.length;i++)a[i]=o.get(i)*1.05f; return a;
-        }
+        private float[] tetra() { float[][] v={{1,1,1},{1,-1,-1},{-1,1,-1},{-1,-1,1}}; int[][] f={{0,1,2},{0,3,1},{0,2,3},{1,3,2}}; return faces(v,f); }
+        private float[] cube() { float a=1f; float[][] v={{-a,-a,-a},{a,-a,-a},{a,a,-a},{-a,a,-a},{-a,-a,a},{a,-a,a},{a,a,a},{-a,a,a}}; int[][] f={{0,1,2},{0,2,3},{4,6,5},{4,7,6},{0,4,5},{0,5,1},{3,2,6},{3,6,7},{1,5,6},{1,6,2},{0,3,7},{0,7,4}}; return faces(v,f); }
+        private float[] octa() { float[][] v={{1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}}; int[][] f={{0,2,4},{2,1,4},{1,3,4},{3,0,4},{2,0,5},{1,2,5},{3,1,5},{0,3,5}}; return faces(v,f); }
+        private float[] icosa() { float t=(float)((1+Math.sqrt(5))/2); float[][] v={{-1,t,0},{1,t,0},{-1,-t,0},{1,-t,0},{0,-1,t},{0,1,t},{0,-1,-t},{0,1,-t},{t,0,-1},{t,0,1},{-t,0,-1},{-t,0,1}}; int[][] f={{0,11,5},{0,5,1},{0,1,7},{0,7,10},{0,10,11},{1,5,9},{5,11,4},{11,10,2},{10,7,6},{7,1,8},{3,9,4},{3,4,2},{3,2,6},{3,6,8},{3,8,9},{4,9,5},{2,4,11},{6,2,10},{8,6,7},{9,8,1}}; return faces(v,f); }
+        private float[] dodeca() { float[][] v={{-1,-1,-1},{-1,-1,1},{-1,1,-1},{-1,1,1},{1,-1,-1},{1,-1,1},{1,1,-1},{1,1,1},{0,-0.618034f,-1.618034f},{-0.618034f,-1.618034f,0},{-1.618034f,0,-0.618034f},{0,-0.618034f,1.618034f},{-0.618034f,1.618034f,0},{1.618034f,0,-0.618034f},{0,0.618034f,-1.618034f},{0.618034f,-1.618034f,0},{-1.618034f,0,0.618034f},{0,0.618034f,1.618034f},{0.618034f,1.618034f,0},{1.618034f,0,0.618034f}}; int[][] f={{6,14,8},{6,4,8},{6,4,13},{2,0,10},{2,0,8},{2,14,8},{16,1,9},{16,0,10},{16,0,9},{16,3,12},{16,2,10},{16,2,12},{15,5,11},{15,1,9},{15,1,11},{15,0,8},{15,0,9},{15,4,8},{19,15,5},{19,4,13},{19,15,4},{17,1,11},{17,16,1},{17,16,3},{17,5,11},{17,19,7},{17,19,5},{18,2,14},{18,6,14},{18,2,12},{18,6,13},{18,19,13},{18,19,7},{18,3,12},{18,17,7},{18,17,3}}; return faces(v,f); }
+        private float[] icoSphere() { ArrayList<Float> o=new ArrayList<>(); int rings=7,segments=14; for(int r=0;r<rings-1;r++){ double lat=-Math.PI/2+Math.PI*r/(rings-1),next=-Math.PI/2+Math.PI*(r+1)/(rings-1); for(int s=0;s<segments;s++){ double a=2*Math.PI*s/segments,b=2*Math.PI*(s+1)/segments; float x1=(float)(Math.cos(lat)*Math.cos(a)),z1=(float)(Math.cos(lat)*Math.sin(a)),y1=(float)Math.sin(lat); float x2=(float)(Math.cos(next)*Math.cos(a)),z2=(float)(Math.cos(next)*Math.sin(a)),y2=(float)Math.sin(next); float x3=(float)(Math.cos(next)*Math.cos(b)),z3=(float)(Math.cos(next)*Math.sin(b)),y3=(float)Math.sin(next); float x4=(float)(Math.cos(lat)*Math.cos(b)),z4=(float)(Math.cos(lat)*Math.sin(b)),y4=(float)Math.sin(lat); tri(o,x1,y1,z1,x2,y2,z2,x3,y3,z3); tri(o,x1,y1,z1,x3,y3,z3,x4,y4,z4); }} float[] a=new float[o.size()];for(int i=0;i<a.length;i++)a[i]=o.get(i)*1.05f;return a; }
         private float[] bipyramid(int n){ArrayList<Float> o=new ArrayList<>();float top=1.15f,bottom=-1.15f,r=.95f;for(int i=0;i<n;i++){double a=i*2*Math.PI/n,b=(i+1)*2*Math.PI/n;tri(o,0,top,0,(float)(r*Math.cos(a)),0,(float)(r*Math.sin(a)),(float)(r*Math.cos(b)),0,(float)(r*Math.sin(b)));tri(o,0,bottom,0,(float)(r*Math.cos(b)),0,(float)(r*Math.sin(b)),(float)(r*Math.cos(a)),0,(float)(r*Math.sin(a)));}float[] a=new float[o.size()];for(int i=0;i<a.length;i++)a[i]=o.get(i);return a;}
         private void tri(ArrayList<Float> o,float ax,float ay,float az,float bx,float by,float bz,float cx,float cy,float cz){o.add(ax);o.add(ay);o.add(az);o.add(bx);o.add(by);o.add(bz);o.add(cx);o.add(cy);o.add(cz);}
         private float[] faces(float[][] v,int[][] f){ArrayList<Float> o=new ArrayList<>();for(int[] q:f)tri(o,v[q[0]][0],v[q[0]][1],v[q[0]][2],v[q[1]][0],v[q[1]][1],v[q[1]][2],v[q[2]][0],v[q[2]][1],v[q[2]][2]);float[] a=new float[o.size()];for(int i=0;i<a.length;i++)a[i]=o.get(i)*.78f;return a;}
