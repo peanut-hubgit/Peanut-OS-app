@@ -3,6 +3,8 @@
     <application
         android:theme="@style/Theme.XRpg"
         android:label="XRpg"
+        android:icon="@drawable/xrpg_logo"
+        android:roundIcon="@drawable/xrpg_logo"
         android:allowBackup="true"
         android:supportsRtl="true">
         <activity android:name=".MainActivity" android:screenOrientation="portrait" android:exported="true">
