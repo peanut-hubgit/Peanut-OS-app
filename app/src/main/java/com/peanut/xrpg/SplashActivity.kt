@@ -23,40 +23,31 @@ class SplashActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         window.statusBarColor = bg
         window.navigationBarColor = bg
-
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setPadding(dp(28), dp(24), dp(28), dp(28))
             setBackgroundColor(bg)
         }
-
         val logo = ImageView(this).apply {
             scaleType = ImageView.ScaleType.FIT_CENTER
             contentDescription = "Logo XRpg"
         }
-        try {
-            logo.setImageResource(R.drawable.xrpg_logo)
-        } catch (_: Throwable) {
-            logo.visibility = View.GONE
-        }
+        try { logo.setImageResource(R.drawable.xrpg_logo) } catch (_: Throwable) { logo.visibility = View.GONE }
         root.addView(logo, LinearLayout.LayoutParams(-1, dp(230)))
-
         root.addView(TextView(this).apply {
             text = "XRpg"
             textSize = 42f
-            setTextColor(text)
+            setTextColor(this@SplashActivity.text)
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(-1, dp(58)))
-
         root.addView(TextView(this).apply {
             text = "Dados rápidos. Regras suas."
             textSize = 15f
             setTextColor(muted)
             gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(-1, dp(42)))
-
         val play = Button(this).apply {
             text = "Jogar"
             textSize = 17f
@@ -68,19 +59,13 @@ class SplashActivity : AppCompatActivity() {
                 startActivity(Intent(this@SplashActivity, MainActivity::class.java))
             }
         }
-        root.addView(play, LinearLayout.LayoutParams(-1, dp(58)).apply {
-            topMargin = dp(22)
-        })
-
+        root.addView(play, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(22) })
         root.addView(TextView(this).apply {
             text = "@Peanut & Cyberleek"
             textSize = 12f
             setTextColor(muted)
             gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(-1, dp(44)).apply {
-            topMargin = dp(24)
-        })
-
+        }, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(24) })
         setContentView(root)
     }
 
