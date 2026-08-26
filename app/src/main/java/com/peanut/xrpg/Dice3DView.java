@@ -1,100 +1,167 @@
 package com.peanut.xrpg;
 
 import android.content.Context;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.Path;
-import android.graphics.RectF;
-import android.view.View;
-import android.view.animation.DecelerateInterpolator;
-import android.animation.ValueAnimator;
+import android.opengl.GLES20;
+import android.opengl.GLSurfaceView;
+import android.opengl.Matrix;
+import android.os.SystemClock;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
+import java.util.ArrayList;
+import java.util.Random;
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.opengles.GL10;
 
-/** Lightweight pseudo-3D dice renderer using only Android Canvas. */
-public class Dice3DView extends View {
-    private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private float rotation = 0f;
-    private float scale = 1f;
-    private String value = "?";
-    private String die = "D20";
+/** Real lightweight OpenGL ES 2.0 dice renderer; no external 3D engine. */
+public final class Dice3DView extends GLSurfaceView {
+    private final Renderer renderer;
 
     public Dice3DView(Context context) {
         super(context);
-        paint.setStyle(Paint.Style.FILL);
-        textPaint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD));
+        setEGLContextClientVersion(2);
+        renderer = new Renderer();
+        setRenderer(renderer);
+        setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+        setBackgroundColor(0xFF0F1117);
     }
 
-    public void setResult(String dieName, int result) {
-        this.die = dieName;
-        this.value = String.valueOf(result);
-        animateRoll();
+    public void setDice(int sides, int count) { renderer.setDice(sides, count); }
+    public void roll() { renderer.roll(); }
+
+    private static final class Renderer implements GLSurfaceView.Renderer {
+        private final Random random = new Random();
+        private final float[] projection = new float[16];
+        private final float[] view = new float[16];
+        private final float[] model = new float[16];
+        private final float[] mvp = new float[16];
+        private final DiceMesh mesh = new DiceMesh();
+        private int sides = 20, count = 1;
+        private long rollUntil;
+        private float spin = 0f, pitch = 22f;
+        private float[] offsets = new float[1];
+
+        void setDice(int sides, int count) {
+            this.sides = sides;
+            this.count = Math.max(1, Math.min(count, 8));
+            mesh.setSides(sides);
+            offsets = new float[this.count];
+            for (int i = 0; i < offsets.length; i++) offsets[i] = i * 47f;
+        }
+
+        void roll() {
+            rollUntil = SystemClock.uptimeMillis() + 950;
+            spin += 360f + random.nextInt(360);
+        }
+
+        @Override public void onSurfaceCreated(GL10 gl, EGLConfig config) {
+            GLES20.glClearColor(0.059f, 0.067f, 0.090f, 1f);
+            GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+            GLES20.glEnable(GLES20.GL_CULL_FACE);
+        }
+
+        @Override public void onSurfaceChanged(GL10 gl, int width, int height) {
+            GLES20.glViewport(0, 0, width, height);
+            float ratio = width / (float) Math.max(1, height);
+            Matrix.frustumM(projection, 0, -ratio, ratio, -1f, 1f, 2f, 12f);
+        }
+
+        @Override public void onDrawFrame(GL10 gl) {
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
+            long now = SystemClock.uptimeMillis();
+            float progress = rollUntil > now ? (rollUntil - now) / 950f : 0f;
+            float extra = progress > 0 ? progress * 900f : 0f;
+            Matrix.setLookAtM(view, 0, 0, 0.25f, 5.8f, 0, 0, 0, 0, 1, 0);
+
+            int cols = count <= 2 ? count : 2;
+            int rows = (count + cols - 1) / cols;
+            for (int i = 0; i < count; i++) {
+                int col = i % cols, row = i / cols;
+                float x = (col - (cols - 1) / 2f) * 1.7f;
+                float y = ((rows - 1) / 2f - row) * 1.65f;
+                float scale = count == 1 ? 1.25f : 0.78f;
+                Matrix.setIdentityM(model, 0);
+                Matrix.translateM(model, 0, x, y, 0);
+                Matrix.rotateM(model, 0, spin + offsets[i] + extra, 0.55f, 1f, 0.25f);
+                Matrix.rotateM(model, 0, pitch, 1f, 0.2f, 0f);
+                Matrix.scaleM(model, 0, scale, scale, scale);
+                Matrix.multiplyMM(mvp, 0, view, 0, model, 0);
+                Matrix.multiplyMM(mvp, 0, projection, 0, mvp, 0);
+                mesh.draw(mvp);
+            }
+            if (rollUntil > now) spin += 5f;
+        }
     }
 
-    public void animateRoll() {
-        ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
-        animator.setDuration(520);
-        animator.setInterpolator(new DecelerateInterpolator());
-        animator.addUpdateListener(a -> {
-            float t = (Float) a.getAnimatedValue();
-            rotation = t * 540f;
-            scale = 0.88f + (float) Math.sin(t * Math.PI) * 0.14f;
-            invalidate();
-        });
-        animator.start();
-    }
+    private static final class DiceMesh {
+        private int program;
+        private FloatBuffer vertices;
+        private int vertexCount;
+        private int sides = 20;
+        private final float[] color = {0.92f, 0.94f, 0.97f, 1f};
 
-    @Override
-    protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-        float cx = getWidth() / 2f;
-        float cy = getHeight() / 2f;
-        float size = Math.min(getWidth(), getHeight()) * 0.34f * scale;
+        void setSides(int sides) { this.sides = sides; build(); }
 
-        canvas.save();
-        canvas.rotate(rotation * 0.12f, cx, cy);
+        void draw(float[] mvp) {
+            if (program == 0) buildProgram();
+            GLES20.glUseProgram(program);
+            int pos = GLES20.glGetAttribLocation(program, "aPosition");
+            int col = GLES20.glGetUniformLocation(program, "uColor");
+            int mat = GLES20.glGetUniformLocation(program, "uMvp");
+            vertices.position(0);
+            GLES20.glEnableVertexAttribArray(pos);
+            GLES20.glVertexAttribPointer(pos, 3, GLES20.GL_FLOAT, false, 0, vertices);
+            GLES20.glUniform4fv(col, 1, color, 0);
+            GLES20.glUniformMatrix4fv(mat, 1, false, mvp, 0);
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, vertexCount);
+            GLES20.glDisableVertexAttribArray(pos);
+        }
 
-        float skew = (float) Math.sin(Math.toRadians(rotation)) * size * 0.35f;
+        private void buildProgram() {
+            String vs = "attribute vec3 aPosition; uniform mat4 uMvp; void main(){gl_Position=uMvp*vec4(aPosition,1.0);}";
+            String fs = "precision mediump float; uniform vec4 uColor; void main(){gl_FragColor=uColor;}";
+            int v = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER); GLES20.glShaderSource(v, vs); GLES20.glCompileShader(v);
+            int f = GLES20.glCreateShader(GLES20.GL_FRAGMENT_SHADER); GLES20.glShaderSource(f, fs); GLES20.glCompileShader(f);
+            program = GLES20.glCreateProgram(); GLES20.glAttachShader(program, v); GLES20.glAttachShader(program, f); GLES20.glLinkProgram(program);
+        }
 
-        Path top = new Path();
-        top.moveTo(cx - size, cy - size * 0.75f);
-        top.lineTo(cx + skew * 0.2f, cy - size);
-        top.lineTo(cx + size, cy - size * 0.55f);
-        top.lineTo(cx, cy - size * 0.28f);
-        top.close();
-        paint.setColor(Color.rgb(84, 88, 104));
-        canvas.drawPath(top, paint);
+        private void build() {
+            float[] data;
+            switch (sides) {
+                case 4: data = tetra(); break;
+                case 6: data = cube(); break;
+                case 8: data = octa(); break;
+                case 10: data = bipyramid(5); break;
+                case 12: data = dodecaLike(); break;
+                case 100: data = icoSphereLike(); break;
+                default: data = icosa(); break;
+            }
+            vertexCount = data.length / 3;
+            vertices = ByteBuffer.allocateDirect(data.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+            vertices.put(data).position(0);
+        }
 
-        Path left = new Path();
-        left.moveTo(cx - size, cy - size * 0.75f);
-        left.lineTo(cx, cy - size * 0.28f);
-        left.lineTo(cx, cy + size);
-        left.lineTo(cx - size, cy + size * 0.62f);
-        left.close();
-        paint.setColor(Color.rgb(52, 56, 70));
-        canvas.drawPath(left, paint);
-
-        Path right = new Path();
-        right.moveTo(cx, cy - size * 0.28f);
-        right.lineTo(cx + size, cy - size * 0.55f);
-        right.lineTo(cx + size, cy + size * 0.62f);
-        right.lineTo(cx, cy + size);
-        right.close();
-        paint.setColor(Color.rgb(32, 36, 46));
-        canvas.drawPath(right, paint);
-
-        paint.setColor(Color.argb(90, 0, 0, 0));
-        canvas.drawOval(new RectF(cx - size * 0.90f, cy + size * 0.68f, cx + size * 0.90f, cy + size * 0.95f), paint);
-
-        textPaint.setTextAlign(Paint.Align.CENTER);
-        textPaint.setTextSize(size * 0.54f);
-        textPaint.setColor(Color.rgb(245, 247, 250));
-        canvas.drawText(value, cx, cy + size * 0.20f, textPaint);
-
-        textPaint.setTextSize(size * 0.22f);
-        textPaint.setColor(Color.rgb(105, 226, 174));
-        canvas.drawText(die, cx, cy + size * 0.56f, textPaint);
-
-        canvas.restore();
+        private float[] tetra() {
+            float[][] v={{1,1,1},{1,-1,-1},{-1,1,-1},{-1,-1,1}};
+            int[][] f={{0,1,2},{0,3,1},{0,2,3},{1,3,2}}; return faces(v,f);
+        }
+        private float[] cube() {
+            float a=1f; float[][] v={{-a,-a,-a},{a,-a,-a},{a,a,-a},{-a,a,-a},{-a,-a,a},{a,-a,a},{a,a,a},{-a,a,a}};
+            int[][] f={{0,1,2},{0,2,3},{4,6,5},{4,7,6},{0,4,5},{0,5,1},{3,2,6},{3,6,7},{1,5,6},{1,6,2},{0,3,7},{0,7,4}}; return faces(v,f);
+        }
+        private float[] octa() {
+            float[][] v={{1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}};
+            int[][] f={{0,2,4},{2,1,4},{1,3,4},{3,0,4},{2,0,5},{1,2,5},{3,1,5},{0,3,5}}; return faces(v,f);
+        }
+        private float[] icosa() {
+            float t=(float)((1+Math.sqrt(5))/2); float[][] v={{-1,t,0},{1,t,0},{-1,-t,0},{1,-t,0},{0,-1,t},{0,1,t},{0,-1,-t},{0,1,-t},{t,0,-1},{t,0,1},{-t,0,-1},{-t,0,1}};
+            int[][] f={{0,11,5},{0,5,1},{0,1,7},{0,7,10},{0,10,11},{1,5,9},{5,11,4},{11,10,2},{10,7,6},{7,1,8},{3,9,4},{3,4,2},{3,2,6},{3,6,8},{3,8,9},{4,9,5},{2,4,11},{6,2,10},{8,6,7},{9,8,1}}; return faces(v,f);
+        }
+        private float[] dodecaLike() { return subdivided(icosa(), 1.02f); }
+        private float[] icoSphereLike() { return subdivided(icosa(), 1.15f); }
+        private float[] subdivided(float[] base,float scale){float[] out=new float[base.length];for(int i=0;i<base.length;i++)out[i]=base[i]*scale;return out;}
+        private float[] bipyramid(int n){ArrayList<Float> o=new ArrayList<>();float top=1.15f,bottom=-1.15f,r=.95f;for(int i=0;i<n;i++){double a=i*2*Math.PI/n,b=(i+1)*2*Math.PI/n;tri(o,0,top,0,(float)(r*Math.cos(a)),0,(float)(r*Math.sin(a)),(float)(r*Math.cos(b)),0,(float)(r*Math.sin(b)));tri(o,0,bottom,0,(float)(r*Math.cos(b)),0,(float)(r*Math.sin(b)),(float)(r*Math.cos(a)),0,(float)(r*Math.sin(a)));}float[] a=new float[o.size()];for(int i=0;i<a.length;i++)a[i]=o.get(i);return a;}
+        private void tri(ArrayList<Float> o,float ax,float ay,float az,float bx,float by,float bz,float cx,float cy,float cz){o.add(ax);o.add(ay);o.add(az);o.add(bx);o.add(by);o.add(bz);o.add(cx);o.add(cy);o.add(cz);}
+        private float[] faces(float[][] v,int[][] f){ArrayList<Float> o=new ArrayList<>();for(int[] q:f)tri(o,v[q[0]][0],v[q[0]][1],v[q[0]][2],v[q[1]][0],v[q[1]][1],v[q[1]][2],v[q[2]][0],v[q[2]][1],v[q[2]][2]);float[] a=new float[o.size()];for(int i=0;i<a.length;i++)a[i]=o.get(i)*.78f;return a;}
     }
 }
